@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Network Scanner</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" type="image/x-icon" href="static/favicon.ico">
+    <script src="https://unpkg.com/timeago.js@4.0.2/dist/timeago.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="static/styles.css?v=1.2">
+</head>
+<body>
+    <div class="header">
+        <h2>🔎 Network Scanner</h2>
+        <div class="header-actions">
+            <button id="themeToggle" onclick="toggleTheme()">🌙 Dark</button>
+            <button onclick="resetThemeToAuto()">🖥️ Auto</button>
+        </div>
+    </div>
+
+    <div class="actions">
+        <input
+            type="text"
+            id="searchInput"
+            placeholder="Search IP, Name, Vendor or MAC..."
+            oninput="applySearch(this.value)"
+        >
+
+        <select id="sortSelect" onchange="changeSort(this.value)">
+            <option value="0">Sort: IP Address</option>
+            <option value="1">Sort: Name</option>
+            <option value="5">Sort: Last Seen</option>
+            <option value="6">Sort: First Seen</option>
+        </select>
+
+        <button onclick="toggleSortDirection()" class="icon-button" title="Toggle sort direction">
+            ↕️
+        </button>
+
+        <button onclick="exportBackup()" class="button-with-icon">
+            <span data-lucide="download" class="button-icon"></span>
+            Export
+        </button>
+
+        <button onclick="document.getElementById('importFile').click()" class="button-with-icon">
+            <span data-lucide="upload" class="button-icon"></span>
+            Import
+        </button>
+
+        <button onclick="confirmClearAll()" class="button-with-icon danger-button">
+            <span data-lucide="trash-2" class="button-icon"></span>
+            Delete All
+        </button>
+    </div>
+
+    <input
+        type="file"
+        id="importFile"
+        accept=".json"
+        onchange="importBackup(event)"
+        hidden
+    >
+
+    <p id="status">⏳ Ready</p>
+    <table id="table"></table>
+
+    <script>
+const THEME_STORAGE_KEY = "networkScannerTheme";
+
+function getSystemTheme() {
+    return window.matchMedia &&
+           window.matchMedia("(prefers-color-scheme: dark)").matches
+        ? "dark"
+        : "light";
+}
+
+function getStoredTheme() {
+    return localStorage.getItem(THEME_STORAGE_KEY);
+}
+
+function applyTheme(theme, source = "manual") {
+    document.documentElement.dataset.theme = theme;
+
+    const button = document.getElementById("themeToggle");
+    if (!button) return;
+
+    if (source === "auto") {
+        button.innerText = theme === "dark"
+            ? "🌙 Auto Dark"
+            : "☀️ Auto Light";
+        button.title = "Automatic theme active. Click to switch manually.";
+    } else {
+        button.innerText = theme === "dark"
+            ? "☀️ Light"
+            : "🌙 Dark";
+        button.title = "Manual theme active.";
+    }
+}
+
+function applyInitialTheme() {
+    const storedTheme = getStoredTheme();
+
+    if (storedTheme === "light" || storedTheme === "dark") {
+        applyTheme(storedTheme, "manual");
+        return;
+    }
+
+    applyTheme(getSystemTheme(), "auto");
+}
+
+function toggleTheme() {
+    const currentTheme = document.documentElement.dataset.theme || getSystemTheme();
+    const nextTheme = currentTheme === "dark" ? "light" : "dark";
+
+    localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+    applyTheme(nextTheme, "manual");
+}
+
+function resetThemeToAuto() {
+    localStorage.removeItem(THEME_STORAGE_KEY);
+    applyTheme(getSystemTheme(), "auto");
+}
+
+function confirmClearAll() {
+    const confirmed = confirm(
+        "This will remove all known devices. Device names will not be deleted."
+    );
+
+    if (!confirmed) {
+        return;
+    }
+
+    clearAll();
+}
+
+applyInitialTheme();
+
+if (window.matchMedia) {
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+
+    mediaQuery.addEventListener("change", () => {
+        const storedTheme = getStoredTheme();
+
+        if (storedTheme !== "light" && storedTheme !== "dark") {
+            applyTheme(getSystemTheme(), "auto");
+        }
+    });
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    if (window.lucide) {
+        lucide.createIcons();
+    }
+});
+    </script>
+
+    <script src="static/app.js?v=20260606-7"></script>
+</body>
+</html>
