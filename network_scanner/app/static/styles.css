@@ -488,7 +488,7 @@ td:nth-child(7) {
     }
 
     td:nth-child(1) {
-        grid-column: 1;
+        grid-column: 1 / -1;
         grid-row: 1;
         width: auto;
         font-size: 13px;
@@ -498,8 +498,8 @@ td:nth-child(7) {
     }
 
     td:nth-child(2) {
-        grid-column: 2;
-        grid-row: 1;
+        grid-column: 1/-1;
+        grid-row: 2;
         width: auto;
         min-width: 0;
     }
@@ -526,6 +526,7 @@ td:nth-child(7) {
     }
 
     td:nth-child(n+3)::before {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         color: var(--text-muted);
         font-size: 11px;
         font-weight: 650;
@@ -538,23 +539,19 @@ td:nth-child(7) {
     }
 
     td:nth-child(4)::before {
-        content: "Vendor";
+        content: "VENDOR";
     }
 
     td:nth-child(5)::before {
-        content: "Status";
+        content: "STATUS";
     }
 
     td:nth-child(6)::before {
-        content: "Last";
+        content: "LAST";
     }
 
     td:nth-child(7)::before {
-        content: "First";
-    }
-
-    td:nth-child(8)::before {
-        content: "Actions";
+        content: "FIRST";
     }
 
     .vendor {
