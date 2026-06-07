@@ -1,5 +1,5 @@
 name: Network Scanner
-version: "1.0.1"
+version: "1.0.2"
 slug: network_scanner
 description: Discover and monitor devices on your local network using ARP and mDNS scanning
 url: "https://github.com/Hjalmgunnarson/network-scanner-ha-app"
@@ -9,6 +9,7 @@ host_network: true
 ingress: true
 ingress_port: 8099
 ingress_root: "/"
+homeassistant_api: true
 arch:
   - aarch64
   - amd64

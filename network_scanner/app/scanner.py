@@ -4,6 +4,8 @@ from netaddr import EUI
 
 import socket
 
+from .ha_events import fire_new_device_detected_event
+
 OFFLINE_TIMEOUT = 241
 
 # ---------------- HELPERS ----------------
@@ -44,6 +46,12 @@ def scan_network(target_ip, names, seen, mdns_cache):
 
         if mac not in seen:
             seen[mac] = {"first_seen": now}
+            
+            fire_new_device_detected_event(
+                mac=mac,
+                ip=ip,
+                seen_at=now,
+            )
 
         seen[mac].update({
             "ip": ip,
