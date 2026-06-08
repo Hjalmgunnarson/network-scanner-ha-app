@@ -1,5 +1,5 @@
 name: Network Scanner
-version: "1.0.2"
+version: "1.0.3"
 slug: network_scanner
 description: Discover and monitor devices on your local network using ARP and mDNS scanning
 url: "https://github.com/Hjalmgunnarson/network-scanner-ha-app"

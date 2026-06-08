@@ -5,15 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" type="image/x-icon" href="static/favicon.ico">
     <script src="https://unpkg.com/timeago.js@4.0.2/dist/timeago.min.js"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <link rel="stylesheet" href="static/styles.css?v=1.0.2">
+
+    <link
+        rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css"
+    >
+
+    <link rel="stylesheet" href="static/styles.css?v=1.0.3">
 </head>
 <body>
     <div class="header">
         <h2>🔎 Network Scanner</h2>
         <div class="header-actions">
-            <button id="themeToggle" onclick="toggleTheme()">🌙 Dark</button>
-            <button onclick="resetThemeToAuto()">🖥️ Auto</button>
+        <button id="themeToggle" onclick="toggleTheme()" class="button-with-icon">
+            <span class="mdi mdi-weather-night button-icon"></span>
+            Dark
+        </button>
+
+        <button onclick="resetThemeToAuto()" class="button-with-icon">
+            <span class="mdi mdi-auto-fix button-icon"></span>
+            Auto
+        </button>
         </div>
     </div>
 
@@ -33,21 +45,21 @@
         </select>
 
         <button onclick="toggleSortDirection()" class="icon-button" title="Toggle sort direction">
-            ↕️
+            <span class="mdi mdi-sort button-icon"></span>
         </button>
 
         <button onclick="exportBackup()" class="button-with-icon">
-            <span data-lucide="download" class="button-icon"></span>
+            <span class="mdi mdi-download button-icon"></span>
             Export
         </button>
 
         <button onclick="document.getElementById('importFile').click()" class="button-with-icon">
-            <span data-lucide="upload" class="button-icon"></span>
+            <span class="mdi mdi-upload button-icon"></span>
             Import
         </button>
 
         <button onclick="confirmClearAll()" class="button-with-icon danger-button">
-            <span data-lucide="trash-2" class="button-icon"></span>
+            <span class="mdi mdi-delete-outline button-icon"></span>
             Delete All
         </button>
     </div>
@@ -65,6 +77,10 @@
 
     <script>
 const THEME_STORAGE_KEY = "networkScannerTheme";
+
+function buttonLabel(icon, text) {
+    return `<span class="mdi ${icon} button-icon"></span> ${text}`;
+}
 
 function getSystemTheme() {
     return window.matchMedia &&
@@ -84,14 +100,16 @@ function applyTheme(theme, source = "manual") {
     if (!button) return;
 
     if (source === "auto") {
-        button.innerText = theme === "dark"
-            ? "🌙 Auto Dark"
-            : "☀️ Auto Light";
+        button.innerHTML = theme === "dark"
+            ? buttonLabel("mdi-weather-night", "Auto Dark")
+            : buttonLabel("mdi-white-balance-sunny", "Auto Light");
+
         button.title = "Automatic theme active. Click to switch manually.";
     } else {
-        button.innerText = theme === "dark"
-            ? "☀️ Light"
-            : "🌙 Dark";
+        button.innerHTML = theme === "dark"
+            ? buttonLabel("mdi-white-balance-sunny", "Light")
+            : buttonLabel("mdi-weather-night", "Dark");
+
         button.title = "Manual theme active.";
     }
 }
@@ -146,13 +164,8 @@ if (window.matchMedia) {
     });
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-    if (window.lucide) {
-        lucide.createIcons();
-    }
-});
     </script>
 
-    <script src="static/app.js?v=1.0.2"></script>
+    <script src="static/app.js?v=1.0.3"></script>
 </body>
 </html>

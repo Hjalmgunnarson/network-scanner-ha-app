@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.3
+
+### Fixed
+
+- Table row alignement issue in desktop view
+
+### Changed
+
+- Moved from Lucide to Material Design icons.
 
 ## 1.0.2
 

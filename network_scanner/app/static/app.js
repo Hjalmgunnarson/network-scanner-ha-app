@@ -11,33 +11,33 @@ function normalize(s) {
 function getIcon(d) {
     const vendor = normalize(d[3]);
 
-    if (vendor.includes("espressif")) return "cpu";
-    if (vendor.includes("tp-link")) return "router";
+    if (vendor.includes("espressif")) return "mdi-chip";
+    if (vendor.includes("tp-link")) return "mdi-router-network-wireless";
 
     if (
         vendor.includes("samsung") ||
         vendor.includes("oneplus") ||
         vendor.includes("google")
-    ) return "smartphone";
+    ) return "mdi-cellphone";
 
     if (
         vendor.includes("azurewave") ||
         vendor.includes("wistron") ||
         vendor.includes("intel")
-    ) return "laptop";
+    ) return "mdi-laptop";
 
-    if (vendor.includes("roborock")) return "bot";
-    if (vendor.includes("nintendo")) return "gamepad";
-    if (vendor.includes("raspberry")) return "server";
-    if (vendor.includes("pocketbook")) return "book";
+    if (vendor.includes("roborock")) return "mdi-robot-vacuum";
+    if (vendor.includes("nintendo")) return "mid-controller-variant-outline";
+    if (vendor.includes("raspberry")) return "mdi-server-network-outline";
+    if (vendor.includes("pocketbook")) return "mdi-book-outline";
 
     if (
         vendor.includes("onbekend") ||
         vendor.includes("random") ||
         vendor.includes("ieee")
-    ) return "help-circle";
+    ) return "mdi-help-circle-outline";
 
-    return "monitor";
+    return "mdi-network-outline";
 }
 
 function handleKey(e, el) {
@@ -148,7 +148,7 @@ function render() {
 <tr class="${rowClass}" style="${rowStyle}">
 <td>${d[0]}</td>
 <td class="name-cell">
-  <span data-lucide="${getIcon(d)}" class="icon"></span>
+  <span class="mdi ${getIcon(d)} icon"></span>
     <input value="${d[1] || ""}"
         onfocus="editingName = true"
         onblur="saveName('${d[2]}', this.value)"
@@ -161,14 +161,13 @@ function render() {
 <td class="timeago" datetime="${new Date(d[6] * 1000).toISOString()}"></td>
 <td>
   <button onclick="del('${d[2]}')" class="icon-button delete-button" title="Delete">
-    <span data-lucide="trash-2" class="button-icon"></span>
+    <span class="mdi mdi-delete-outline button-icon"></span>
   </button>
 </td>
 </tr>`;
     });
 
     timeago.render(document.querySelectorAll(".timeago"));
-    lucide.createIcons();
 }
 
 async function load() {
@@ -186,7 +185,7 @@ async function load() {
     } catch (e) {
         console.error("Load error:", e);
         document.getElementById("status").innerText =
-            "⚠️ Kon resultaten niet laden";
+            "Could not load results.";
     }
 }
 
@@ -203,16 +202,16 @@ async function loadScanStatus() {
         const total = currentData.length;
         const online = currentData.filter(d => d[4]).length;
 
-        let text = `✅ ${online} online / ${total} total`;
+        let text = `${online} online / ${total} total`;
 
         if (status.scanning) {
-            text += " · 🔄 Scanning";
+            text += " · Scanning";
         } else if (status.last_finished) {
             text += ` · Last scan: ${timeago.format(status.last_finished * 1000)}`;
         }
 
         if (status.error) {
-            text += ` · ⚠️ ${status.error}`;
+            text += ` · ${status.error}`;
         }
 
         document.getElementById("status").innerText = text;
@@ -333,12 +332,12 @@ async function importBackup(event) {
 
         await load();
 
-        alert("✅ Import succesful, please wait for results.");
+        alert("Import succesful, please wait for results!");
 
     } catch (e) {
         console.error("Import error:", e);
 
-        alert(`⚠️ Import failed:\n\n${e.message}`);
+        alert(`Import failed:\n\n${e.message}`);
     }
 
     event.target.value = "";
