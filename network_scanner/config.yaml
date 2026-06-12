@@ -1,5 +1,5 @@
 name: Network Scanner
-version: "1.0.3"
+version: "1.2.0"
 slug: network_scanner
 description: Discover and monitor devices on your local network using ARP and mDNS scanning
 url: "https://github.com/Hjalmgunnarson/network-scanner-ha-app"
@@ -16,6 +16,12 @@ arch:
 options:
   target_ip: "192.168.0.0/24"
   scan_interval: 30
+  offline_interval: 600
+  forget_interval: 2880
+  log_level: info
 schema:
   target_ip: "str"
   scan_interval: "int(5,3600)"
+  offline_interval: "int(5,3600)"
+  forget_interval: "int(60,7200)"
+  log_level: list(debug|info|warning|error|critical)  

@@ -1,26 +1,21 @@
 import os
 import time
-import json
 import threading
-import ipaddress
+import logging
 
 from fastapi import FastAPI, Body, UploadFile, File
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from .storage import load_json, save_json
+from .storage import load_json, save_json, update_json_file, user_config_file_lock, seen_file_lock
 from .scanner import scan_network
 from .mDNS import mdns_cache, start_mdns
 from .backup import create_backup, import_backup
-
+from .app_config import get_target_ip, get_scan_interval, get_log_level
+from .device_config import DeviceConfig
 
 # ---------------- CONFIG ----------------
-
-OPTIONS_FILE = "/data/options.json"
-DEFAULT_TARGET_IP = "192.168.0.0/24"
-DEFAULT_SCAN_INTERVAL = 30  # seconden
-
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 DATA_DIR = os.environ.get("APP_DATA_DIR", "/data")
@@ -29,54 +24,20 @@ TEMPLATE_DIR = os.path.join(BASE_DIR, "templates")
 
 os.makedirs(DATA_DIR, exist_ok=True)
 
-NAMES_FILE = os.path.join(DATA_DIR, "names.json")
+USER_CONFIG_FILE = os.path.join(DATA_DIR, "user_config.json")
 SEEN_FILE = os.path.join(DATA_DIR, "seen_devices.json")
 
-def get_target_ip():
-    """
-    Lees target_ip uit Home Assistant add-on options.
-    Valt terug op DEFAULT_TARGET_IP als options.json ontbreekt of ongeldig is.
-    """
-    try:
-        with open(OPTIONS_FILE, "r") as f:
-            options = json.load(f)
+interval = get_scan_interval()
+target_ip = get_target_ip()
 
-        target_ip = options.get("target_ip", DEFAULT_TARGET_IP)
+logging.basicConfig(
+    level=get_log_level(),
+    format="%(levelname)s %(asctime)s [%(name)s] %(message)s",
+)
 
-        # Valideer CIDR, bijvoorbeeld 192.168.0.0/24
-        ipaddress.ip_network(target_ip, strict=False)
+logger = logging.getLogger(__name__)
 
-        return target_ip
 
-    except Exception as e:
-        print(f"[config] Could not read target_ip from {OPTIONS_FILE}: {e}")
-        print(f"[config] Falling back to default target_ip: {DEFAULT_TARGET_IP}")
-        return DEFAULT_TARGET_IP
-
-def get_scan_interval():
-    """
-    Lees scan_interval uit Home Assistant add-on options.
-    Valt terug op DEFAULT_SCAN_INTERVAL als options.json ontbreekt of ongeldig is.
-    """
-    try:
-        with open(OPTIONS_FILE, "r") as f:
-            options = json.load(f)
-
-        interval = int(options.get("scan_interval", DEFAULT_SCAN_INTERVAL))
-
-        # Extra veiligheid naast config.yaml schema
-        if interval < 5:
-            interval = 5
-
-        if interval > 3600:
-            interval = 3600
-
-        return interval
-
-    except Exception as e:
-        print(f"[config] Could not read scan_interval from {OPTIONS_FILE}: {e}")
-        print(f"[config] Falling back to default scan_interval: {DEFAULT_SCAN_INTERVAL}")
-        return DEFAULT_SCAN_INTERVAL
 # ---------------- APP ----------------
 
 app = FastAPI()
@@ -101,11 +62,6 @@ _background_started = False
 
 
 def run_scan_once():
-    """
-    Voert één scan uit en slaat het resultaat op in scan_state.
-    /scan leest straks alleen deze cache.
-    """
-    target_ip = get_target_ip()
 
     with scan_lock:
         scan_state["last_started"] = time.time()
@@ -113,23 +69,27 @@ def run_scan_once():
         scan_state["error"] = None
 
     try:
-        print(f"[scanner] Starting scan for {target_ip}")
+        logger.debug(f"Starting scan for {target_ip}")
 
-        names = load_json(NAMES_FILE)
-        seen = load_json(SEEN_FILE)
+        with user_config_file_lock:
+            user_config = load_json(USER_CONFIG_FILE)
 
-        if not isinstance(names, dict):
-            names = {}
+        with seen_file_lock:
+            seen = load_json(SEEN_FILE)
+
+        if not isinstance(user_config, dict):
+            user_config = {}
 
         if not isinstance(seen, dict):
             seen = {}
 
-        data, seen = scan_network(target_ip, names, seen, mdns_cache)
+        data, seen = scan_network(target_ip, user_config, seen, mdns_cache)
 
         if data is None:
             data = []
 
-        save_json(SEEN_FILE, seen)
+        with seen_file_lock:
+            save_json(SEEN_FILE, seen)
 
         with scan_lock:
             scan_state["data"] = data
@@ -137,29 +97,25 @@ def run_scan_once():
             scan_state["scanning"] = False
             scan_state["error"] = None
 
-        print(f"[scanner] Scan completed: {len(data)} devices")
+        logger.debug(f"Scan completed: {len(data)} devices")
 
     except Exception as e:
         with scan_lock:
             scan_state["scanning"] = False
             scan_state["error"] = str(e)
 
-        print(f"[scanner] Scan failed: {e}")
+        logger.exception("Scan failed")
 
 def scanner_loop():
-    """
-    Background scanner.
-    Draait continu zolang de add-on draait.
-    """
-    print("[scanner] Background scanner started")
+
+    logger.debug(" Background scanner started")
 
     while True:
         run_scan_once()
 
         # Wacht SCAN_INTERVAL seconden, tenzij handmatig een scan wordt aangevraagd.
-        interval = get_scan_interval()
-
-        print(f"[scanner] Waiting {interval} seconds until next scan")
+        
+        logger.debug(f"Waiting {interval} seconds until next scan")
 
         scan_now_event.wait(interval)
         scan_now_event.clear()
@@ -180,7 +136,29 @@ def startup():
     threading.Thread(target=start_mdns, daemon=True).start()
     threading.Thread(target=scanner_loop, daemon=True).start()
 
-    print("[startup] mDNS and scanner threads started")
+    logger.debug("mDNS and scanner threads started")
+
+def update_cached_device(mac, updates):
+    with scan_lock:
+        for device in scan_state["data"]:
+            if device.get("mac") == mac:
+                device.update(updates)
+
+
+def update_device_config(mac, mutator):
+    def updater(user_config):
+        device_config = DeviceConfig.from_json(user_config.get(mac))
+
+        mutator(device_config)
+
+        if not device_config.name and not device_config.saved and not device_config.tracked:
+            user_config.pop(mac, None)
+        else:
+            user_config[mac] = device_config.to_json()
+
+        return user_config
+
+    update_json_file(USER_CONFIG_FILE, user_config_file_lock, updater)
 
 
 # ---------------- API ----------------
@@ -219,19 +197,58 @@ def scan_now():
     scan_now_event.set()
     return {"ok": True}
 
-
 @app.post("/name")
 def set_name(mac: str = Body(...), name: str = Body(...)):
-    names = load_json(NAMES_FILE)
+    
+    update_device_config(
+        mac,
+        lambda device_config: setattr(device_config, "name", name),
+    )
 
-    if name:
-        names[mac] = name
-    else:
-        names.pop(mac, None)
+    update_cached_device(
+        mac,
+        {"name": name},
+    )
 
-    save_json(NAMES_FILE, names)
     return {"ok": True}
 
+@app.post("/save")
+def set_saved(mac: str = Body(...), saved: bool = Body(...)):
+
+    update_device_config(
+        mac,
+        lambda device_config: setattr(device_config, "saved", saved),
+    )
+
+    update_cached_device(
+        mac,
+        {"saved": saved},
+    )
+
+    return {
+        "ok": True,
+        "mac": mac,
+        "saved": saved,
+    }
+
+@app.post("/track")
+def set_tracked(mac: str = Body(...), tracked: bool = Body(...)):
+
+    update_device_config(
+        mac,
+        lambda device_config: setattr(device_config, "tracked", tracked),
+    )
+
+    update_cached_device(
+        mac,
+        {"tracked": tracked},
+    )
+
+    return {
+        "ok": True,
+        "mac": mac,
+        "tracked": tracked,
+    }
 
 @app.post("/delete")
 def delete(data: dict = Body(...)):
@@ -240,24 +257,22 @@ def delete(data: dict = Body(...)):
     if not mac:
         return {"ok": False, "error": "missing mac"}
 
-    names = load_json(NAMES_FILE)
-    seen = load_json(SEEN_FILE)
+    def updater_user_config(user_config):
+        user_config.pop(mac, None)
+        return user_config
 
-    # Verwijder eventuele custom name
-    if isinstance(names, dict):
-        names.pop(mac, None)
-        save_json(NAMES_FILE, names)
+    update_json_file(USER_CONFIG_FILE, user_config_file_lock, updater_user_config)
 
-    # Verwijder uit seen_devices als het een dict is
-    if isinstance(seen, dict):
+    def updater_seen(seen):
         seen.pop(mac, None)
-        save_json(SEEN_FILE, seen)
+        return seen
+    update_json_file(SEEN_FILE, seen_file_lock, updater_seen)
 
     # Verwijder ook direct uit memory-cache zodat UI meteen klopt
     with scan_lock:
         scan_state["data"] = [
-            d for d in scan_state["data"]
-            if len(d) < 3 or d[2] != mac
+            device for device in scan_state["data"]
+            if device.get("mac") != mac
         ]
 
     return {"ok": True}
@@ -265,8 +280,12 @@ def delete(data: dict = Body(...)):
 
 @app.post("/clear")
 def clear():
-    save_json(SEEN_FILE, {})
 
+    def updater(seen):
+        return {}
+    
+    update_json_file(SEEN_FILE, seen_file_lock, updater)
+    
     with scan_lock:
         scan_state["data"] = []
 
@@ -281,8 +300,10 @@ def get_mdns():
 def export_data():
 
     backup = create_backup(
-        NAMES_FILE,
+        USER_CONFIG_FILE,
         SEEN_FILE,
+        user_config_file_lock,
+        seen_file_lock,
     )
 
     export_path = os.path.join(
@@ -300,38 +321,27 @@ def export_data():
 
 @app.post("/import")
 async def import_data(file: UploadFile = File(...)):
+    raw = await file.read()
 
-    try:
-        raw = await file.read()
+    result = import_backup(
+        raw,
+        USER_CONFIG_FILE,
+        SEEN_FILE,
+        user_config_file_lock,
+        seen_file_lock,
+        merge=False,
+    )
 
-        data = json.loads(raw.decode("utf-8"))
-
-        result = import_backup(
-            data,
-            NAMES_FILE,
-            SEEN_FILE,
-            merge=False,
-        )
-        
-        # Trigger direct een nieuwe achtergrondscan
-        scan_now_event.set()
-        return result
-
-    except json.JSONDecodeError as e:
+    if not result.get("ok"):
         return JSONResponse(
             status_code=400,
-            content={
-                "error": f"Invalid JSON syntax: {str(e)}"
-            },
+            content=result,
         )
 
-    except Exception as e:
-        return JSONResponse(
-            status_code=400,
-            content={
-                "error": str(e)
-            },
-        )
+    # Trigger direct een nieuwe achtergrondscan
+    scan_now_event.set()
+
+    return result
     
 # ---------------- UI ----------------
 

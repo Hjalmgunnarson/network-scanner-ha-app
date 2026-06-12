@@ -11,7 +11,7 @@
         href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css"
     >
 
-    <link rel="stylesheet" href="static/styles.css?v=1.0.3">
+    <link rel="stylesheet" href="static/styles.css?v=2.0.0">
 </head>
 <body>
     <div class="header">
@@ -36,31 +36,48 @@
             placeholder="Search IP, Name, Vendor or MAC..."
             oninput="applySearch(this.value)"
         >
+        
+        <button
+            id="savedFilterButton"
+            onclick="cycleSavedFilter()"
+            class="icon-button filter-button"
+            title="Saved filter: All"
+        >
+            <span class="mdi mdi-content-save-outline button-icon"></span>
+        </button>
 
-        <select id="sortSelect" onchange="changeSort(this.value)">
-            <option value="0">Sort: IP Address</option>
-            <option value="1">Sort: Name</option>
-            <option value="5">Sort: Last Seen</option>
-            <option value="6">Sort: First Seen</option>
-        </select>
+        <button
+            id="trackedFilterButton"
+            onclick="cycleTrackedFilter()"
+            class="icon-button filter-button"
+            title="Tracked filter: All"
+        >
+            <span class="mdi mdi-map-marker-outline button-icon"></span>
+        </button>
+
+        <button
+            id="onlineFilterButton"
+            onclick="cycleOnlineFilter()"
+            class="icon-button filter-button"
+            title="Online filter: All"
+        >
+            <span class="mdi mdi-power-plug-outline button-icon"></span>
+        </button>
 
         <button onclick="toggleSortDirection()" class="icon-button" title="Toggle sort direction">
             <span class="mdi mdi-sort button-icon"></span>
         </button>
 
-        <button onclick="exportBackup()" class="button-with-icon">
+        <button onclick="exportBackup()" class="button-with-icon export-button" title="Export">
             <span class="mdi mdi-download button-icon"></span>
-            Export
         </button>
 
-        <button onclick="document.getElementById('importFile').click()" class="button-with-icon">
+        <button onclick="document.getElementById('importFile').click()" class="button-with-icon import-button" title="Import">
             <span class="mdi mdi-upload button-icon"></span>
-            Import
         </button>
 
-        <button onclick="confirmClearAll()" class="button-with-icon danger-button">
+        <button onclick="confirmClearAll()" class="button-with-icon danger-button delete-all-button" title="Delete All">
             <span class="mdi mdi-delete-outline button-icon"></span>
-            Delete All
         </button>
     </div>
 
@@ -75,6 +92,22 @@
     <p id="status">⏳ Ready</p>
     <table id="table"></table>
 
+    <div class="actions bottom-actions">
+        <button onclick="window.open('scan', '_blank')" class="button-with-icon">
+            <span class="mdi mdi-database-search-outline button-icon"></span>
+            Scan Results
+        </button>
+
+        <button onclick="window.open('scan/status', '_blank')" class="button-with-icon">
+            <span class="mdi mdi-information-outline button-icon"></span>
+            Scan Status
+        </button>
+
+        <button onclick="window.open('mdns', '_blank')" class="button-with-icon">
+            <span class="mdi mdi-lan-connect button-icon"></span>
+            mDNS Cache
+        </button>
+    </div>
     <script>
 const THEME_STORAGE_KEY = "networkScannerTheme";
 
@@ -165,7 +198,12 @@ if (window.matchMedia) {
 }
 
     </script>
+    
+    <script src="static/app-state.js?v=2.0.0"></script>
+    <script src="static/app-utils.js?v=2.0.0"></script>
+    <script src="static/app-api.js?v=2.0.0"></script>
+    <script src="static/app-render.js?v=2.0.0"></script>
+    <script src="static/app.js?v=2.0.0"></script>
 
-    <script src="static/app.js?v=1.0.3"></script>
 </body>
 </html>

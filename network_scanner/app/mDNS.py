@@ -1,5 +1,8 @@
 import time
 from zeroconf import Zeroconf, ServiceBrowser
+import logging
+
+logger = logging.getLogger(__name__)
 
 mdns_cache = {}
 
@@ -22,7 +25,7 @@ class MDNSListener:
 
 
 def start_mdns():
-    print(f"[mDNS] Starting listener")
+    logger.debug(f"Starting listener")
     try:
         zc = Zeroconf()
         listener = MDNSListener()
@@ -72,4 +75,4 @@ def start_mdns():
         while True:
             time.sleep(1)
     except Exception as e:
-        print("💥 mDNS CRASH:", e)
+        logger.error("💥 mDNS CRASH:", e)

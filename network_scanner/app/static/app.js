@@ -1,95 +1,3 @@
-let currentData = [];
-let sortKey = 0;
-let sortAsc = true;
-let editingName = false;
-let searchQuery = "";
-
-function normalize(s) {
-    return (s || "").toLowerCase();
-}
-
-function getIcon(d) {
-    const vendor = normalize(d[3]);
-
-    if (vendor.includes("espressif")) return "mdi-chip";
-    if (vendor.includes("tp-link")) return "mdi-router-network-wireless";
-
-    if (
-        vendor.includes("samsung") ||
-        vendor.includes("oneplus") ||
-        vendor.includes("google")
-    ) return "mdi-cellphone";
-
-    if (
-        vendor.includes("azurewave") ||
-        vendor.includes("wistron") ||
-        vendor.includes("intel")
-    ) return "mdi-laptop";
-
-    if (vendor.includes("roborock")) return "mdi-robot-vacuum";
-    if (vendor.includes("nintendo")) return "mid-controller-variant-outline";
-    if (vendor.includes("raspberry")) return "mdi-server-network-outline";
-    if (vendor.includes("pocketbook")) return "mdi-book-outline";
-
-    if (
-        vendor.includes("onbekend") ||
-        vendor.includes("random") ||
-        vendor.includes("ieee")
-    ) return "mdi-help-circle-outline";
-
-    return "mdi-network-outline";
-}
-
-function handleKey(e, el) {
-    if (e.key === "Enter") {
-        el.blur();
-    }
-}
-
-function getArrow(k) {
-    if (sortKey !== k) return "";
-    return sortAsc ? " ↑" : " ↓";
-}
-
-function ipToNumber(ip) {
-    if (!ip) return 0;
-
-    return ip
-        .split(".")
-        .reduce((acc, n) => acc * 256 + Number(n), 0);
-}
-
-function sortData(data) {
-    return [...data].sort((a, b) => {
-        if (sortKey === 0) {
-            const ipA = ipToNumber(a[0]);
-            const ipB = ipToNumber(b[0]);
-
-            if (ipA !== ipB) {
-                return sortAsc ? ipA - ipB : ipB - ipA;
-            }
-
-            return (b[5] || 0) - (a[5] || 0);
-        }
-
-        if (sortKey === 5) {
-            return sortAsc ? a[5] - b[5] : b[5] - a[5];
-        }
-
-        if (sortKey === 6) {
-            return sortAsc ? a[6] - b[6] : b[6] - a[6];
-        }
-
-        if (sortKey === 1) {
-            return sortAsc
-                ? (a[1] || "").localeCompare(b[1] || "")
-                : (b[1] || "").localeCompare(a[1] || "");
-        }
-
-        return 0;
-    });
-}
-
 function changeSort(value) {
     sortKey = Number(value);
     render();
@@ -100,85 +8,10 @@ function toggleSortDirection() {
     render();
 }
 
-function render() {
-    let t = document.getElementById("table");
-
-    t.innerHTML = `
-<tr class="table-header">
-<th>IP${getArrow(0)}</th>
-<th>Name${getArrow(1)}</th>
-<th>MAC</th>
-<th>Vendor</th>
-<th>Status</th>
-<th>Last Seen${getArrow(5)}</th>
-<th>First Seen${getArrow(6)}</th>
-<th>Actions</th>
-</tr>
-`;
-
-    let filtered = currentData.filter(d => {
-
-        if (!searchQuery) {
-            return true;
-        }
-
-        const haystack = [
-            d[0], // IP
-            d[1], // Name
-            d[2], // MAC
-            d[3], // Vendor
-        ]
-            .join(" ")
-            .toLowerCase();
-
-        return haystack.includes(searchQuery);
-    });
-
-    let data = sortData(filtered);
-
-    data.forEach(d => {
-        const userName = d[7];
-        const isNew = !userName;
-        const online = d[4];
-
-        const rowClass = isNew ? "new-device" : "";
-        const rowStyle = online ? "" : "opacity:0.5;";
-
-        t.innerHTML += `
-<tr class="${rowClass}" style="${rowStyle}">
-<td>${d[0]}</td>
-<td class="name-cell">
-  <span class="mdi ${getIcon(d)} icon"></span>
-    <input value="${d[1] || ""}"
-        onfocus="editingName = true"
-        onblur="saveName('${d[2]}', this.value)"
-        onkeydown="handleKey(event, this)">
-</td>
-<td>${d[2]}</td>
-<td class="vendor">${d[3]}</td>
-<td><span class="status-dot ${online ? "online" : "offline"}"></span></td>
-<td class="timeago" datetime="${new Date(d[5] * 1000).toISOString()}"></td>
-<td class="timeago" datetime="${new Date(d[6] * 1000).toISOString()}"></td>
-<td>
-  <button onclick="del('${d[2]}')" class="icon-button delete-button" title="Delete">
-    <span class="mdi mdi-delete-outline button-icon"></span>
-  </button>
-</td>
-</tr>`;
-    });
-
-    timeago.render(document.querySelectorAll(".timeago"));
-}
-
 async function load() {
     try {
-        let r = await fetch("scan");
+        currentData = await fetchScan();
 
-        if (!r.ok) {
-            throw new Error("HTTP " + r.status);
-        }
-
-        currentData = await r.json();
         render();
         loadScanStatus();
 
@@ -191,16 +24,10 @@ async function load() {
 
 async function loadScanStatus() {
     try {
-        const r = await fetch("scan/status");
-
-        if (!r.ok) {
-            throw new Error("HTTP " + r.status);
-        }
-
-        const status = await r.json();
+        const status = await fetchScanStatus();
 
         const total = currentData.length;
-        const online = currentData.filter(d => d[4]).length;
+        const online = currentData.filter(device => device.online).length;
 
         let text = `${online} online / ${total} total`;
 
@@ -223,21 +50,13 @@ async function loadScanStatus() {
 
 async function saveName(mac, name) {
     try {
-        await fetch("name", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ mac, name })
-        });
+        await postJson("name", { mac, name });
 
-        currentData = currentData.map(d => {
-            if (d[2] !== mac) return d;
+        currentData = currentData.map(device => {
+            if (device.mac !== mac) return device;
 
-            d[1] = name;
-            d[7] = name || null;
-
-            return d;
+            device.name = name;
+            return device;
         });
 
         render();
@@ -248,16 +67,40 @@ async function saveName(mac, name) {
     }
 }
 
-async function del(mac) {
-    await fetch("delete", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ mac })
+async function toggleSave(mac) {
+    const device = currentData.find(device => device.mac === mac);
+    if (!device) return;
+
+    const nextSaved = !device.saved;
+
+    await postJson("save", {
+        mac,
+        saved: nextSaved
     });
 
-    currentData = currentData.filter(d => d[2] !== mac);
+    device.saved = nextSaved;
+    render();
+}
+
+async function toggleTrack(mac) {
+    const device = currentData.find(device => device.mac === mac);
+    if (!device) return;
+
+    const nextTracked = !device.tracked;
+
+    await postJson("track", {
+        mac,
+        tracked: nextTracked
+    });
+
+    device.tracked = nextTracked;
+    render();
+}
+
+async function del(mac) {
+    await postJson("delete", { mac });
+
+    currentData = currentData.filter(device => device.mac !== mac);
     render();
 }
 
@@ -307,23 +150,22 @@ async function importBackup(event) {
         });
 
         if (!r.ok) {
-            if (!r.ok) {
 
-                let message = `HTTP ${r.status}`;
+            let message = `HTTP ${r.status}`;
 
-                try {
-                    const error = await r.json();
+            try {
+                const error = await r.json();
 
-                    if (error.error) {
-                        message = error.error;
-                    }
-
-                } catch (_) {
-                    // ignore JSON parse failure
+                if (error.error) {
+                    message = error.error;
                 }
 
-                throw new Error(message);
+            } catch (_) {
+                // ignore JSON parse failure
             }
+
+            throw new Error(message);
+        
         }
 
         const result = await r.json();
@@ -332,7 +174,7 @@ async function importBackup(event) {
 
         await load();
 
-        alert("Import succesful, please wait for results!");
+        alert("Import successful. Please wait for results!");
 
     } catch (e) {
         console.error("Import error:", e);
@@ -343,13 +185,37 @@ async function importBackup(event) {
     event.target.value = "";
 }
 
+function nextFilterState(value) {
+    if (value === "all") return "true";
+    if (value === "true") return "false";
+    return "all";
+}
+
+function cycleSavedFilter() {
+    savedFilter = nextFilterState(savedFilter);
+    updateFilterButtons();
+    render();
+}
+
+function cycleTrackedFilter() {
+    trackedFilter = nextFilterState(trackedFilter);
+    updateFilterButtons();
+    render();
+}
+
+function cycleOnlineFilter() {
+    onlineFilter = nextFilterState(onlineFilter);
+    updateFilterButtons();
+    render();
+}
+
 function applySearch(value) {
     searchQuery = value.toLowerCase().trim();
-
     render();
 }
 
 setInterval(autoLoad, 30000);
 setInterval(loadScanStatus, 5000);
 
+updateFilterButtons();
 load();

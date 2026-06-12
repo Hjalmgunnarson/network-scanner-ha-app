@@ -127,6 +127,12 @@ body {
     flex: 0 0 auto;
 }
 
+.bottom-actions {
+    margin-top: 20px;
+    margin-bottom: 0;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+}
 
 /* =========================================================
    BUTTONS / CONTROLS
@@ -156,6 +162,10 @@ button:hover,
 
 button:active {
     transform: translateY(1px);
+}
+
+.filter-button {
+    flex: 0 0 auto;
 }
 
 .actions select {
@@ -192,14 +202,21 @@ line-height: 1;
 }
 
 .icon-button {
-    width: 32px;
-    height: 32px;
-    min-width: 32px;
-    max-width: 32px;
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+    max-width: 28px;
     padding: 0;
     display: inline-flex;
     align-items: center;
     justify-content: center;
+}
+
+.row-action-buttons {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
 }
 
 .delete-button {
@@ -212,6 +229,63 @@ line-height: 1;
     border-color: #ef4444;
     background: color-mix(in srgb, #ef4444 12%, transparent);
 }
+
+.row-actions {
+    white-space: nowrap;
+}
+
+.save-button {
+    color: var(--text-muted);
+}
+
+.state-on {
+    color: var(--online);
+    border-color: var(--online);
+    background: color-mix(in srgb, var(--online) 6%, transparent);
+}
+
+.state-on:hover {
+    color: var(--online);
+    border-color: var(--online);
+    background: color-mix(in srgb, var(--online) 20%, transparent);
+}
+
+.state-off {
+    color: #ef4444;
+    border-color: #ef4444;
+    background: color-mix(in srgb, #ef4444 4%, transparent);
+}
+
+.state-off:hover {
+    color: #ef4444;
+    border-color: #ef4444;
+    background: color-mix(in srgb, #ef4444 14%, transparent);
+}
+
+.state-neutral {
+    color: var(--text-muted);
+    border-color: var(--button-border);
+    background: var(--button-bg);
+}
+
+.state-neutral:hover {
+    color: var(--button-text);
+    border-color: var(--button-border);
+    background: var(--button-hover);
+}
+
+/* .state-danger {
+    color: #ef4444;
+    border-color: #ef4444;
+    background: color-mix(in srgb, #ef4444 12%, transparent);
+} */
+
+.state-danger:hover {
+    color: #ef4444;
+    border-color: #ef4444;
+    background: color-mix(in srgb, #ef4444 18%, transparent);
+}
+
 
 
 /* =========================================================
@@ -286,7 +360,7 @@ td:nth-child(7) {
 
 th:nth-child(8),
 td:nth-child(8) {
-    width: 80px;
+    width: 120px;
     text-align: center;
 }
 
@@ -426,8 +500,27 @@ td:nth-child(7) {
     }
 
     #searchInput {
+        order: 1;
         width: 100%;
         max-width: none;
+        flex: 1 1 100%;
+    }
+
+    
+    .filter-button,
+    .actions > .icon-button {
+        order: 2;
+        flex: 0 0 32px;
+    }
+
+    .export-button,
+    .import-button {
+        order: 3;
+        flex: 1 1 calc(50% - 3px);
+    }
+
+    .delete-all-button {
+        order: 4;
         flex: 1 1 100%;
     }
 
@@ -565,11 +658,35 @@ td:nth-child(7) {
         text-align: left;
     }
 
-    td:nth-child(8) .icon-button {
+    td:nth-child(8)::before {
+        content: "ACTIONS";
+    }
+
+    td:nth-child(8).row-actions {
+        text-align: left;
+    }
+
+    td:nth-child(8).row-actions .row-action-buttons {
         justify-self: start;
+        display: inline-flex;
+        gap: 6px;
     }
 
     #status {
         border-radius: 10px;
+    }
+
+    /* @media (max-width: 420px) { */
+    .export-button,
+    .import-button,
+    .delete-all-button {
+        font-size: 0;
+        gap: 0;
+    }
+
+    .export-button .button-icon,
+    .import-button .button-icon,
+    .delete-all-button .button-icon {
+        font-size: 20px;
     }
 }

@@ -4,18 +4,19 @@ from netaddr import EUI
 
 import socket
 
-from .ha_events import fire_new_device_detected_event
-
-OFFLINE_TIMEOUT = 241
+from .device_config import DeviceConfig
+from .app_config import get_offline_interval, get_forget_interval
+from .ha_requests import post_new_device_detected_event, post_device_tracker_state
 
 # ---------------- HELPERS ----------------
+offline_interval = get_offline_interval()
+forget_interval = get_forget_interval()
 
 def get_hostname(ip):
     try:
         return socket.gethostbyaddr(ip)[0]
     except:
         return ""
-
 
 def is_random_mac(mac):
     try:
@@ -32,7 +33,7 @@ def get_vendor(mac):
     except:
         return "Unknown"
 
-def scan_network(target_ip, names, seen, mdns_cache):
+def scan_network(target_ip, user_config, seen, mdns_cache):
     arp = ARP(pdst=target_ip)
     ether = Ether(dst="ff:ff:ff:ff:ff:ff")
     packet = ether / arp
@@ -47,7 +48,7 @@ def scan_network(target_ip, names, seen, mdns_cache):
         if mac not in seen:
             seen[mac] = {"first_seen": now}
             
-            fire_new_device_detected_event(
+            post_new_device_detected_event(
                 mac=mac,
                 ip=ip,
                 seen_at=now,
@@ -60,23 +61,55 @@ def scan_network(target_ip, names, seen, mdns_cache):
         })
 
     devices = []
-    for mac, d in seen.items():
+
+    for mac, d in list(seen.items()):
+        ip = d.get("ip", "")
         last_seen = d.get("last_seen", 0)
-        now_online = (now - last_seen) < OFFLINE_TIMEOUT
+
+        now_online = (now - last_seen) < offline_interval
+        stale = (now - last_seen) > forget_interval
+
+        raw_device_config = user_config.get(mac)
+
+        # Niet saved, niet tracked, en te lang niet gezien:
+        # verwijderen uit seen en overslaan.
+        if raw_device_config is None and stale:
+            seen.pop(mac, None)
+            continue
+
+        device_config = DeviceConfig.from_json(raw_device_config)
+
         hostname = get_hostname(ip)
+        mdns_name = mdns_cache.get(ip, "")
 
-        custom_name = names.get(mac)
-        display_name = custom_name or hostname or mdns_cache.get(d.get("ip", ""), "")
+        if raw_device_config is not None:
+            display_name = device_config.name
+        else:
+            display_name = mdns_name or hostname
 
-        devices.append((
-            d.get("ip",""),
-            display_name,
-            mac,
-            d.get("vendor",""),
-            now_online,
-            last_seen,
-            d.get("first_seen",0),
-            custom_name
-        ))
+        saved = device_config.saved
+        tracked = device_config.tracked
+
+        devices.append({
+            "ip": ip,
+            "name": display_name,
+            "mac": mac,
+            "vendor": d.get("vendor", ""),
+            "online": now_online,
+            "last_seen": last_seen,
+            "first_seen": d.get("first_seen", 0),
+            "saved": saved,
+            "tracked": tracked,
+        })
+
+        if tracked:
+            post_device_tracker_state(
+                mac,
+                ip,
+                last_seen,
+                now_online,
+                now,
+                display_name,
+            )
 
     return devices, seen
