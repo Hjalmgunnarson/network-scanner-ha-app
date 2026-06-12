@@ -8,7 +8,7 @@ Network Scanner can also push discovery events and selected device tracker state
 
 ## Screenshot
 
-![Network Scanner dashboard](docs/network_scanner_app.png)
+![Network Scanner dashboard](network_scanner/docs/network_scanner_app.png)
 
 ## Features
 
