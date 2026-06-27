@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.1
+
+### Fixed
+
+- Increased range for forget interval to 7 days.
+- Adjusted size of export, import and delete all buttons.
+
 ## 2.0.0
 
 ### Added
