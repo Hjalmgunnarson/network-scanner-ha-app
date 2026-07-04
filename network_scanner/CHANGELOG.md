@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.2
+
+### Fixed
+
+- Correctly report tracking_type and in_zones attributes for device tracker state.
+
 ## 2.0.1
 
 ### Fixed

@@ -100,12 +100,15 @@ def post_device_tracker_state(mac, ip, last_seen, is_home, time_of_scan, custom_
 
     entity_id = mac_to_entity_id(mac)
     state = "home" if is_home else "not_home"
+    in_zones = ["zone.home"] if is_home else []
     last_seen_iso = formatTime(last_seen)
     time_of_scan_iso = formatTime(time_of_scan)
     payload = {
         "state": state,
         "attributes": {
+            "tracking_type": "connection",
             "source_type": "router",
+            "in_zones": in_zones,
             "mac": mac_with_underscores(mac),
             "ip": ip,
             "last_seen": last_seen_iso,
