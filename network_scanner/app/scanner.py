@@ -15,14 +15,14 @@ forget_interval = get_forget_interval()
 def get_hostname(ip):
     try:
         return socket.gethostbyaddr(ip)[0]
-    except:
+    except OSError:
         return ""
 
 def is_random_mac(mac):
     try:
         first_byte = int(mac.split(":")[0], 16)
         return (first_byte & 2) != 0
-    except:
+    except OSError:
         return False
 
 def get_vendor(mac):
@@ -30,7 +30,7 @@ def get_vendor(mac):
         return "Random MAC Address"
     try:
         return EUI(mac).oui.registration().org
-    except:
+    except OSError:
         return "Unknown"
 
 def scan_network(target_ip, user_config, seen, mdns_cache):
