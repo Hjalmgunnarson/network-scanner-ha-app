@@ -20,8 +20,8 @@ class MDNSListener:
             if info and info.addresses:
                 ip = ".".join(map(str, info.addresses[0]))
                 mdns_cache[ip] = name.split(".")[0]
-        except:
-            pass
+        except OSError:
+        pass
 
 
 def start_mdns():
@@ -69,8 +69,8 @@ def start_mdns():
         for s in services:
             try:
                 ServiceBrowser(zc, s, listener)
-            except:
-                pass
+            except OSError:
+        pass
 
         while True:
             time.sleep(1)

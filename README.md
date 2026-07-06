@@ -349,3 +349,9 @@ No cloud services are used.
 No external telemetry is collected.
 
 Device information remains inside the app and Home Assistant environment.
+
+## Usage
+
+```bash
+python3 main.py
+```
